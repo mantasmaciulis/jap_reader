@@ -8,23 +8,9 @@ import {
   jpdbRemoveVocabulary,
   jpdbReview,
   jpdbSetSentence,
-  JPDBCardState,
   JPDBGrade,
 } from './api';
-
-const JPDB_STATE_MAP: Record<JPDBCardState, JitenCardState> = {
-  new: JitenCardState.NEW,
-  learning: JitenCardState.YOUNG,
-  known: JitenCardState.MATURE,
-  due: JitenCardState.DUE,
-  failed: JitenCardState.DUE,
-  locked: JitenCardState.NEW,
-  'never-forget': JitenCardState.MASTERED,
-  suspended: JitenCardState.BLACKLISTED,
-  blacklisted: JitenCardState.BLACKLISTED,
-  redundant: JitenCardState.MATURE,
-  'not-in-deck': JitenCardState.NOT_IN_DECK,
-};
+import { JPDB_STATE_MAP } from './state-map';
 
 const RATING_TO_GRADE: Record<JitenRating, JPDBGrade> = {
   unknown: 'nothing',
@@ -87,14 +73,14 @@ export class JpdbCardActionProvider implements CardActionProvider {
     const [firstField] = firstWord;
 
     if (!firstField?.length) {
-      return [JitenCardState.NOT_IN_DECK];
+      return [JitenCardState.NEW];
     }
 
     const states = firstField
       .map((s) => JPDB_STATE_MAP[s])
       .filter((s): s is JitenCardState => s !== undefined);
 
-    return states.length > 0 ? states : [JitenCardState.NOT_IN_DECK];
+    return states.length > 0 ? states : [JitenCardState.NEW];
   }
 
   public async setSentence(wordId: number, readingIndex: number, sentence: string): Promise<void> {

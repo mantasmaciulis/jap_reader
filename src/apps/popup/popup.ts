@@ -98,6 +98,7 @@ export class Popup {
   private _hidePopupAutomatically: boolean;
   private _hidePopupDelay: number;
   private _hideAfterAction: boolean;
+  private _suppressHide = false;
   private _disableFadeAnimation: boolean;
   private _leftAlignPopupToWord: boolean;
   private _showConjugations: boolean;
@@ -131,9 +132,11 @@ export class Popup {
       setTimeout(() => {
         this._card = Registry.getCard(wordId, readingIndex);
 
-        if (this._hideAfterAction) {
+        if (this._hideAfterAction && !this._suppressHide) {
           return this.hide();
         }
+
+        this._suppressHide = false;
 
         this.rerender();
       }, 1);
@@ -142,6 +145,7 @@ export class Popup {
   }
 
   public show(context: HTMLElement, sentence?: string): void {
+    this._suppressHide = false;
     this._cardContext = context;
     this._card = Registry.getCardFromElement(context);
     this._sentence = sentence;
@@ -573,27 +577,41 @@ export class Popup {
     return div.innerHTML;
   }
 
-  private buildSentenceWithFurigana(): string {
+  private getSentenceWords(): Element[] | null {
     if (!this._cardContext || !this._sentence) {
-      return '';
+      return null;
     }
 
     const parent = this._cardContext.parentElement;
 
     if (!parent) {
-      return this._sentence;
+      return null;
     }
 
     const words = Array.from(parent.querySelectorAll('.jiten-word'));
-    const sentenceWords = words.filter(
+    const filtered = words.filter(
       (el) => Registry.wordEventDelegator.getSentence(el) === this._sentence,
     );
 
-    if (sentenceWords.length === 0) {
-      return this._sentence;
-    }
+    return filtered.length > 0 ? filtered : null;
+  }
 
-    return sentenceWords.map((el) => el.innerHTML).join('');
+  private buildSentenceWithFurigana(): string {
+    return (
+      this.getSentenceWords()
+        ?.map((el) => el.innerHTML)
+        .join('') ?? ''
+    );
+  }
+
+  private getSentenceTextContent(): string {
+    return (
+      this.getSentenceWords()
+        ?.map((el) => el.textContent ?? '')
+        .join('') ??
+      this._sentence ??
+      ''
+    );
   }
 
   private stopAiStream(): void {
@@ -645,7 +663,7 @@ export class Popup {
     this._details.replaceChildren(createElement('div', { class: 'ai-result', children }));
 
     // Smooth animation state
-    let rawBuffer = '';
+    let sanitizedBuffer = '';
     let displayedLen = 0;
     let streamDone = false;
     let timer: ReturnType<typeof setInterval> | null = null;
@@ -654,7 +672,7 @@ export class Popup {
     const TICK_MS = 16;
 
     const tick = (): void => {
-      if (displayedLen >= rawBuffer.length) {
+      if (displayedLen >= sanitizedBuffer.length) {
         if (streamDone && timer) {
           clearInterval(timer);
           timer = null;
@@ -663,8 +681,8 @@ export class Popup {
         return;
       }
 
-      displayedLen = Math.min(displayedLen + CHARS_PER_TICK, rawBuffer.length);
-      textEl.innerHTML = this.sanitizeHtml(rawBuffer.substring(0, displayedLen));
+      displayedLen = Math.min(displayedLen + CHARS_PER_TICK, sanitizedBuffer.length);
+      textEl.innerHTML = sanitizedBuffer.substring(0, displayedLen);
     };
 
     const cleanup = (): void => {
@@ -684,7 +702,7 @@ export class Popup {
       }
 
       if (msg.type === 'chunk' && msg.text) {
-        rawBuffer += msg.text;
+        sanitizedBuffer = this.sanitizeHtml(sanitizedBuffer + msg.text);
 
         if (!timer) {
           timer = setInterval(tick, TICK_MS);
@@ -721,7 +739,7 @@ export class Popup {
       return;
     }
 
-    this.streamAi('Sentence Breakdown', 'aiSentencePrompt', this._sentence, 1024);
+    this.streamAi('Sentence Breakdown', 'aiSentencePrompt', this.getSentenceTextContent(), 1024);
   }
 
   private explainWord(): void {
@@ -735,7 +753,7 @@ export class Popup {
     this.streamAi(
       'AI Explanation',
       'aiWordPrompt',
-      `Sentence: ${this._sentence}\n\nWord: ${this._card.spelling}`,
+      `Sentence: ${this.getSentenceTextContent()}\n\nWord: ${this._card.spelling}`,
       256,
     );
   }
@@ -927,9 +945,7 @@ export class Popup {
       return wrapper;
     };
 
-    const canAddToDeck =
-      card.cardState.includes(JitenCardState.NOT_IN_DECK) ||
-      card.cardState.includes(JitenCardState.NEW);
+    const canAddToDeck = card.cardState.includes(JitenCardState.NEW);
 
     const children = [
       svgIcon(
@@ -968,6 +984,7 @@ export class Popup {
       children.push(
         svgIcon('add', '<path d="M12 5v14M5 12h14"/>', 'Add to deck', () => {
           if (this._card) {
+            this._suppressHide = true;
             this._mining.addOrRemove('add', 'mining', this._card);
           }
         }),

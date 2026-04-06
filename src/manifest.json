@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Jiten Reader",
-  "version": "1.0.7",
-  "description": "Japanese text parsing with Jiten",
+  "name": "jp-reader",
+  "version": "1.0.8",
+  "description": "Parse Japanese text on any webpage with SRS integration and AI-powered explanations",
   "minimum_chrome_version": "116",
   "background": {
     "service_worker": "js/background-worker.js"

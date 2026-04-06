@@ -1,21 +1,8 @@
 import { JitenCard, JitenRuby, JitenToken } from '../../jiten/types';
 import { ParsingProvider } from '../types';
-import { jpdbParse, JPDBCardState, JPDBRawToken, JPDBRawVocabulary } from './api';
+import { jpdbParse, JPDBRawToken, JPDBRawVocabulary } from './api';
 import { getPitchClass } from './pitch-accent-utils';
-
-const JPDB_STATE_MAP: Record<JPDBCardState, string> = {
-  new: 'new',
-  learning: 'young',
-  known: 'mature',
-  due: 'due',
-  failed: 'due',
-  locked: 'new',
-  'never-forget': 'mastered',
-  suspended: 'blacklisted',
-  blacklisted: 'blacklisted',
-  redundant: 'mature',
-  'not-in-deck': 'not-in-deck',
-};
+import { JPDB_STATE_MAP } from './state-map';
 
 function jpdbPitchToAccentNumber(pitch: string): number {
   for (let i = 0; i < pitch.length - 1; i++) {
@@ -61,7 +48,7 @@ export class JpdbParsingProvider implements ParsingProvider {
       ];
 
       if (mappedState.length === 0) {
-        mappedState.push('not-in-deck');
+        mappedState.push('new');
       }
 
       return {

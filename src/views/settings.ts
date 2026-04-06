@@ -474,7 +474,9 @@ function parseCondition(expr: string): boolean {
     while (peek() === '&&') {
       next();
 
-      value = value && parsePrimary();
+      const right = parsePrimary();
+
+      value = value && right;
     }
 
     return value;
@@ -486,7 +488,9 @@ function parseCondition(expr: string): boolean {
     while (peek() === '||') {
       next();
 
-      value = value || parseAnd();
+      const right = parseAnd();
+
+      value = value || right;
     }
 
     return value;
