@@ -14,7 +14,7 @@ const JPDB_STATE_MAP: Record<JPDBCardState, string> = {
   suspended: 'blacklisted',
   blacklisted: 'blacklisted',
   redundant: 'mature',
-  'not-in-deck': 'new',
+  'not-in-deck': 'not-in-deck',
 };
 
 function jpdbPitchToAccentNumber(pitch: string): number {
@@ -61,7 +61,7 @@ export class JpdbParsingProvider implements ParsingProvider {
       ];
 
       if (mappedState.length === 0) {
-        mappedState.push('new');
+        mappedState.push('not-in-deck');
       }
 
       return {

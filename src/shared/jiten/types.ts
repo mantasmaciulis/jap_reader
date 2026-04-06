@@ -25,6 +25,7 @@ export const JitenRatingMap: Record<JitenRating, number> = {
 };
 
 export enum JitenCardState {
+  NOT_IN_DECK = 'not-in-deck',
   NEW = 'new',
   YOUNG = 'young',
   MATURE = 'mature',

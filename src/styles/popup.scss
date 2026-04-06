@@ -306,11 +306,46 @@ $popup-shadow:
 
         #header-meta {
           display: flex;
-          align-items: center;
-          gap: 6px;
+          flex-direction: column;
+          align-items: flex-end;
+          gap: 3px;
           flex-shrink: 0;
-        }
 
+          #header-info {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+          }
+
+          #quick-actions {
+            display: flex;
+            gap: 1px;
+
+            .quick-action {
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              width: 22px;
+              height: 22px;
+              border-radius: 4px;
+              color: #777;
+              cursor: pointer;
+              transition: color 0.12s, background 0.12s;
+
+              svg {
+                display: block;
+              }
+
+              &:hover {
+                color: #ddd;
+                background: rgba(255, 255, 255, 0.07);
+              }
+            }
+          }
+        }
+      }
+
+      .subsection {
         #state {
           display: flex;
           flex-direction: row;

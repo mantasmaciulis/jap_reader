@@ -480,11 +480,6 @@ export class Popup {
       condition?: boolean;
     }[] = [
       {
-        cls: 'mining',
-        label: 'Mine',
-        handler: () => this._mining.addOrRemove('add', 'mining', this._card!),
-      },
-      {
         cls: 'never-forget',
         label: 'Never forget',
         handler: () => performFlaggedDeckAction('neverForget'),
@@ -694,7 +689,13 @@ export class Popup {
           this.getReadingBlock(card),
           createElement('div', {
             id: 'header-meta',
-            children: [this.getCardStateBlock(card), this.getFrequencyBlock(card)],
+            children: [
+              createElement('div', {
+                id: 'header-info',
+                children: [this.getCardStateBlock(card), this.getFrequencyBlock(card)],
+              }),
+              this.getQuickActions(card),
+            ],
           }),
         ],
       }),
@@ -704,6 +705,52 @@ export class Popup {
         children: [this.getPitchAccentBlock(card)],
       }),
     );
+  }
+
+  private getQuickActions(card: JitenCard): HTMLDivElement {
+    const svgIcon = (path: string, title: string, handler?: () => void): HTMLElement => {
+      const wrapper = createElement('div', {
+        class: 'quick-action',
+        attributes: { title },
+        handler,
+      });
+
+      wrapper.innerHTML =
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" ' +
+        'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+        `${path}</svg>`;
+
+      return wrapper;
+    };
+
+    const canAddToDeck =
+      card.cardState.includes(JitenCardState.NOT_IN_DECK) ||
+      card.cardState.includes(JitenCardState.NEW);
+
+    const children = [
+      svgIcon(
+        '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+        'Explain sentence',
+      ),
+      svgIcon(
+        '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>' +
+          '<line x1="12" y1="17" x2="12.01" y2="17"/>',
+        'Explain word in context',
+      ),
+      svgIcon('<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>', 'Review history'),
+    ];
+
+    if (canAddToDeck) {
+      children.push(
+        svgIcon('<path d="M12 5v14M5 12h14"/>', 'Add to deck', () => {
+          if (this._card) {
+            this._mining.addOrRemove('add', 'mining', this._card);
+          }
+        }),
+      );
+    }
+
+    return createElement('div', { id: 'quick-actions', children });
   }
 
   private getReadingBlock(card: JitenCard): HTMLElement {
