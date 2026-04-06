@@ -3,9 +3,8 @@ import { createElement } from '@shared/dom/create-element';
 import { findElements } from '@shared/dom/find-elements';
 import { withElement } from '@shared/dom/with-element';
 import { getStyleUrl } from '@shared/extension/get-style-url';
+import { runtime } from '@shared/extension/runtime';
 import { JitenCard, JitenCardState } from '@shared/jiten/types';
-import { ExplainSentenceCommand } from '@shared/messages/background/explain-sentence.command';
-import { ExplainWordCommand } from '@shared/messages/background/explain-word.command';
 import { ForgetCardCommand } from '@shared/messages/background/forget-card.command';
 import { UpdateCardStateCommand } from '@shared/messages/background/update-card-state.command';
 import { onBroadcastMessage } from '@shared/messages/receiving/on-broadcast-message';
@@ -118,7 +117,8 @@ export class Popup {
   private _sentence?: string;
   private _sentenceHtml?: string;
   private _activeView: 'dict' | 'sentence' | 'word' | 'history' = 'dict';
-  private _aiRequestId = 0;
+  private _aiPort?: chrome.runtime.Port;
+  private _aiCleanup?: () => void;
 
   constructor(
     private _mining: MiningController,
@@ -163,6 +163,8 @@ export class Popup {
   }
 
   public hide(): void {
+    this.stopAiStream();
+
     Object.assign<CSSStyleDeclaration, Partial<CSSStyleDeclaration>>(this._root.style, {
       transition: this._disableFadeAnimation ? 'none' : 'opacity 200ms ease-in, visibility 20ms',
       opacity: '0',
@@ -594,45 +596,11 @@ export class Popup {
     return sentenceWords.map((el) => el.innerHTML).join('');
   }
 
-  private showAiLoading(message: string): void {
-    const sentenceHtml = this._sentenceHtml;
-    const children: HTMLElement[] = [];
-
-    if (sentenceHtml) {
-      const sentenceEl = createElement('div', {
-        class: 'ai-sentence',
-        attributes: { lang: 'ja' },
-      });
-
-      sentenceEl.innerHTML = sentenceHtml;
-      children.push(sentenceEl);
-    }
-
-    children.push(createElement('div', { class: 'ai-loading', innerText: message }));
-
-    this._details.replaceChildren(createElement('div', { class: 'ai-result', children }));
-  }
-
-  private showAiResult(label: string, html: string, sentence?: string): void {
-    const textEl = createElement('div', { class: 'ai-text' });
-
-    textEl.innerHTML = this.sanitizeHtml(html);
-
-    const children: HTMLElement[] = [];
-
-    if (sentence) {
-      const sentenceEl = createElement('div', {
-        class: 'ai-sentence',
-        attributes: { lang: 'ja' },
-      });
-
-      sentenceEl.innerHTML = this._sentenceHtml ?? '';
-      children.push(sentenceEl);
-    }
-
-    children.push(createElement('div', { class: 'ai-label', innerText: label }), textEl);
-
-    this._details.replaceChildren(createElement('div', { class: 'ai-result', children }));
+  private stopAiStream(): void {
+    this._aiCleanup?.();
+    this._aiCleanup = undefined;
+    this._aiPort?.disconnect();
+    this._aiPort = undefined;
   }
 
   private resetToMeanings(): void {
@@ -652,6 +620,99 @@ export class Popup {
     }
   }
 
+  private streamAi(label: string, promptKey: string, userContent: string, maxTokens: number): void {
+    this.stopAiStream();
+
+    const port = runtime.connect({ name: 'ai-stream' });
+
+    this._aiPort = port;
+
+    // Build DOM structure once
+    const textEl = createElement('div', { class: 'ai-text' });
+    const children: HTMLElement[] = [];
+
+    if (this._sentenceHtml) {
+      const sentenceEl = createElement('div', {
+        class: 'ai-sentence',
+        attributes: { lang: 'ja' },
+      });
+
+      sentenceEl.innerHTML = this._sentenceHtml;
+      children.push(sentenceEl);
+    }
+
+    children.push(createElement('div', { class: 'ai-label', innerText: label }), textEl);
+    this._details.replaceChildren(createElement('div', { class: 'ai-result', children }));
+
+    // Smooth animation state
+    let rawBuffer = '';
+    let displayedLen = 0;
+    let streamDone = false;
+    let timer: ReturnType<typeof setInterval> | null = null;
+
+    const CHARS_PER_TICK = 3;
+    const TICK_MS = 16;
+
+    const tick = (): void => {
+      if (displayedLen >= rawBuffer.length) {
+        if (streamDone && timer) {
+          clearInterval(timer);
+          timer = null;
+        }
+
+        return;
+      }
+
+      displayedLen = Math.min(displayedLen + CHARS_PER_TICK, rawBuffer.length);
+      textEl.innerHTML = this.sanitizeHtml(rawBuffer.substring(0, displayedLen));
+    };
+
+    const cleanup = (): void => {
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+    };
+
+    this._aiCleanup = cleanup;
+
+    port.onMessage.addListener((msg: { type: string; text?: string; message?: string }) => {
+      if (this._aiPort !== port) {
+        cleanup();
+
+        return;
+      }
+
+      if (msg.type === 'chunk' && msg.text) {
+        rawBuffer += msg.text;
+
+        if (!timer) {
+          timer = setInterval(tick, TICK_MS);
+        }
+      }
+
+      if (msg.type === 'done') {
+        streamDone = true;
+        this._aiPort = undefined;
+        port.disconnect();
+      }
+
+      if (msg.type === 'error') {
+        cleanup();
+        this._aiPort = undefined;
+        port.disconnect();
+        this._details.replaceChildren(
+          createElement('div', {
+            class: 'ai-loading',
+            innerText: msg.message ?? 'Failed to get response.',
+          }),
+        );
+      }
+    });
+
+    port.postMessage({ type: 'stream', promptKey, userContent, maxTokens });
+  }
+
   private explainSentence(): void {
     this._activeView = 'sentence';
     this.updateActiveQuickAction();
@@ -660,29 +721,7 @@ export class Popup {
       return;
     }
 
-    const requestId = ++this._aiRequestId;
-    const sentence = this._sentence;
-
-    this.showAiLoading('Breaking down sentence...');
-
-    new ExplainSentenceCommand(sentence)
-      .call()
-      .then((result: string) => {
-        if (this._aiRequestId !== requestId) {
-          return;
-        }
-
-        this.showAiResult('Sentence Breakdown', result, sentence);
-      })
-      .catch(() => {
-        if (this._aiRequestId !== requestId) {
-          return;
-        }
-
-        this._details.replaceChildren(
-          createElement('div', { class: 'ai-loading', innerText: 'Failed to get breakdown.' }),
-        );
-      });
+    this.streamAi('Sentence Breakdown', 'aiSentencePrompt', this._sentence, 1024);
   }
 
   private explainWord(): void {
@@ -693,30 +732,12 @@ export class Popup {
       return;
     }
 
-    const requestId = ++this._aiRequestId;
-    const { spelling } = this._card;
-    const sentence = this._sentence;
-
-    this.showAiLoading('Thinking...');
-
-    new ExplainWordCommand(spelling, sentence)
-      .call()
-      .then((result: string) => {
-        if (this._aiRequestId !== requestId) {
-          return;
-        }
-
-        this.showAiResult('AI Explanation', result, sentence);
-      })
-      .catch(() => {
-        if (this._aiRequestId !== requestId) {
-          return;
-        }
-
-        this._details.replaceChildren(
-          createElement('div', { class: 'ai-loading', innerText: 'Failed to get explanation.' }),
-        );
-      });
+    this.streamAi(
+      'AI Explanation',
+      'aiWordPrompt',
+      `Sentence: ${this._sentence}\n\nWord: ${this._card.spelling}`,
+      256,
+    );
   }
 
   private async handleForgetClick(): Promise<void> {

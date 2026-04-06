@@ -14,8 +14,7 @@ import { ParseSelectionCommand } from '@shared/messages/foreground/parse-selecti
 import { onBroadcastMessage } from '@shared/messages/receiving/on-broadcast-message';
 import { invalidateProviderCache } from '@shared/providers/get-providers';
 import { DEFAULT_WORD_STYLE_CONFIG } from '@shared/word-style/themes';
-import { ExplainSentenceCommandHandler } from './ai/explain-sentence-command.handler';
-import { ExplainWordCommandHandler } from './ai/explain-word-command.handler';
+import { claudeStreamRequest } from './ai/claude-request';
 import { ForgetCardCommandHandler } from './jiten-card-actions/forget-card-command.handler';
 import { GradeCardCommandHandler } from './jiten-card-actions/grade-card-command.handler';
 import { RunDeckActionCommandHandler } from './jiten-card-actions/run-deck-action-command.handler';
@@ -54,8 +53,6 @@ const updateCardStateCommandHandler = new UpdateCardStateCommandHandler();
 const gradeCardCommandHandler = new GradeCardCommandHandler();
 const runDeckActionCommandHandler = new RunDeckActionCommandHandler();
 const forgetCardCommandHandler = new ForgetCardCommandHandler();
-const explainSentenceCommandHandler = new ExplainSentenceCommandHandler();
-const explainWordCommandHandler = new ExplainWordCommandHandler();
 const openSettingsCommandHandler = new OpenSettingsCommandHandler();
 const updateBadgeCommandHandler = new UpdateBadgeCommandHandler();
 
@@ -67,13 +64,56 @@ const handlerCollection = new BackgroundCommandHandlerCollection(
   gradeCardCommandHandler,
   runDeckActionCommandHandler,
   forgetCardCommandHandler,
-  explainSentenceCommandHandler,
-  explainWordCommandHandler,
   openSettingsCommandHandler,
   updateBadgeCommandHandler,
 );
 
 handlerCollection.listen();
+
+// Streaming AI port handler
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name !== 'ai-stream') {
+    return;
+  }
+
+  let abortController: AbortController | null = null;
+
+  port.onDisconnect.addListener(() => {
+    abortController?.abort();
+  });
+
+  port.onMessage.addListener(
+    (msg: { type: string; promptKey: string; userContent: string; maxTokens: number }) => {
+      if (msg.type !== 'stream') {
+        return;
+      }
+
+      abortController = new AbortController();
+
+      const safePost = (data: Record<string, string>): void => {
+        try {
+          port.postMessage(data);
+        } catch {
+          abortController?.abort();
+        }
+      };
+
+      void claudeStreamRequest(
+        msg.promptKey,
+        msg.userContent,
+        msg.maxTokens,
+        (chunk) => safePost({ type: 'chunk', text: chunk }),
+        abortController.signal,
+      )
+        .then(() => safePost({ type: 'done' }))
+        .catch((error: Error) => {
+          if (error.name !== 'AbortError') {
+            safePost({ type: 'error', message: error.message });
+          }
+        });
+    },
+  );
+});
 
 onBroadcastMessage('profileSwitched', () => {
   invalidateProfileCache();
