@@ -473,36 +473,47 @@ export class Popup {
 
     const items: HTMLElement[] = [];
 
-    items.push(
-      createElement('a', {
-        class: ['menu-item', 'never-forget'],
-        innerText: 'Never forget',
-        handler: () => {
-          performFlaggedDeckAction('neverForget');
-          this.hideMoreMenu();
-        },
-      }),
-    );
+    const menuItems: {
+      cls: string;
+      label: string;
+      handler: () => void;
+      condition?: boolean;
+    }[] = [
+      {
+        cls: 'mining',
+        label: 'Mine',
+        handler: () => this._mining.addOrRemove('add', 'mining', this._card!),
+      },
+      {
+        cls: 'never-forget',
+        label: 'Never forget',
+        handler: () => performFlaggedDeckAction('neverForget'),
+      },
+      {
+        cls: 'blacklist',
+        label: 'Blacklist',
+        handler: () => performFlaggedDeckAction('blacklist'),
+      },
+      {
+        cls: 'forget',
+        label: 'Forget',
+        handler: () => void this.handleForgetClick(),
+        condition: this._parsingProvider !== 'jpdb',
+      },
+    ];
 
-    items.push(
-      createElement('a', {
-        class: ['menu-item', 'blacklist'],
-        innerText: 'Blacklist',
-        handler: () => {
-          performFlaggedDeckAction('blacklist');
-          this.hideMoreMenu();
-        },
-      }),
-    );
+    for (const item of menuItems) {
+      if (item.condition === false) {
+        continue;
+      }
 
-    if (this._parsingProvider !== 'jpdb') {
       items.push(
         createElement('a', {
-          class: ['menu-item', 'forget'],
-          innerText: 'Forget',
+          class: ['menu-item', item.cls],
+          innerText: item.label,
           handler: () => {
+            item.handler();
             this.hideMoreMenu();
-            void this.handleForgetClick();
           },
         }),
       );

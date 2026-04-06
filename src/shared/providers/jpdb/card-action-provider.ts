@@ -115,7 +115,6 @@ export class JpdbCardActionProvider implements CardActionProvider {
     const value = await getConfiguration(configKey as 'jpdbMiningDeck');
 
     if (!value) {
-      // Fall back to JPDB special deck names
       if (deck === 'blacklist') {
         return 'blacklist';
       }
