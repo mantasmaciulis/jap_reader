@@ -25,16 +25,16 @@
   <div class="settings-layout">
     <nav id="settings-toc">
       <a href="#profiles">Profiles</a>
-      <a href="#jiten-integration">Jiten Integration</a>
+      <a href="#api-providers">API Providers</a>
       <a href="#export">Import / Export</a>
       <a href="#theme">Appearance</a>
-      <a href="#text-highlighting" data-show="jitenApiKey">Text Highlighting</a>
-      <a href="#popup" data-show="jitenApiKey">Popup</a>
-      <a href="#keybinds" data-show="jitenApiKey">Keybinds</a>
-      <a href="#status-bar" data-show="jitenApiKey">Status Bar</a>
-      <a href="#parsing" data-show="jitenApiKey">Parsing</a>
-      <a href="#features" data-show="jitenApiKey">Features</a>
-      <a href="#other" data-show="jitenApiKey">Other</a>
+      <a href="#text-highlighting" data-show="jitenApiKey || jpdbApiToken">Text Highlighting</a>
+      <a href="#popup" data-show="jitenApiKey || jpdbApiToken">Popup</a>
+      <a href="#keybinds" data-show="jitenApiKey || jpdbApiToken">Keybinds</a>
+      <a href="#status-bar" data-show="jitenApiKey || jpdbApiToken">Status Bar</a>
+      <a href="#parsing" data-show="jitenApiKey || jpdbApiToken">Parsing</a>
+      <a href="#features" data-show="jitenApiKey || jpdbApiToken">Features</a>
+      <a href="#other" data-show="jitenApiKey || jpdbApiToken">Other</a>
       <a href="#anki-integration" data-show="enableAnkiIntegration">Anki</a>
     </nav>
 
@@ -65,10 +65,27 @@
         </div>
       </div>
 
-      <div id="jiten-integration" class="section">
-        <h6>Jiten Integration</h6>
+      <div id="api-providers" class="section">
+        <h6>API Providers</h6>
+
         <div class="form-box-parent">
           <div class="form-box">
+            <div>
+              <label for="parsingProvider">Provider</label>
+              <select id="parsingProvider" name="parsingProvider">
+                <option value="jiten">Jiten</option>
+                <option value="jpdb">JPDB</option>
+              </select>
+              <p style="opacity: 0.8">
+                Which service to use for parsing, SRS reviews, and mining.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-box-parent">
+          <div class="form-box" style="flex-direction: column">
+            <h6 style="margin: 0; font-size: 0.95em; opacity: 0.7">Jiten</h6>
             <div>
               <label for="jitenApiKey">Jiten API Key</label>
               <div class="inline-group">
@@ -100,19 +117,76 @@
                 and scroll to the very bottom.
               </p>
             </div>
-          </div>
-        </div>
-
-        <div class="form-box-parent">
-          <div class="form-box">
             <div>
-              <label for="jitenApiEndpoint">API Endpoint</label>
+              <label for="jitenApiEndpoint">Jiten API Endpoint</label>
               <div class="inline-group">
                 <input type="text" id="jitenApiEndpoint" name="jitenApiEndpoint" />
               </div>
               <p style="opacity: 0.8">
-                The base URL for the Jiten API. Default: <code>https://api.jiten.moe/api</code>
+                Default: <code>https://api.jiten.moe/api</code>
               </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-box-parent">
+          <div class="form-box" style="flex-direction: column">
+            <h6 style="margin: 0; font-size: 0.95em; opacity: 0.7">JPDB</h6>
+            <div>
+              <label for="jpdbApiToken">JPDB API Token</label>
+              <div class="inline-group">
+                <input type="password" id="jpdbApiToken" name="jpdbApiToken" />
+                <div>
+                  <input
+                    type="button"
+                    id="jpdbApiKeyRevealButton"
+                    class="button outline small"
+                    value="👁"
+                  />
+                </div>
+                <div>
+                  <input
+                    type="button"
+                    id="jpdbApiTokenButton"
+                    class="button outline small"
+                    value="⭯"
+                  />
+                </div>
+              </div>
+              <p style="opacity: 0.8">
+                To find your API token, visit the
+                <a
+                  href="https://jpdb.io/settings"
+                  target="_blank"
+                >JPDB settings page</a>.
+              </p>
+            </div>
+            <div>
+              <label for="jpdbMiningDeck">JPDB Mining Deck</label>
+              <div class="inline-group">
+                <input type="text" id="jpdbMiningDeck" name="jpdbMiningDeck" placeholder="Deck name or ID" />
+              </div>
+              <p style="opacity: 0.8">The deck to add mined words to. Enter a deck name or numeric ID.</p>
+            </div>
+            <div>
+              <label for="jpdbBlacklistDeck">Blacklist Deck</label>
+              <div class="inline-group">
+                <input type="text" id="jpdbBlacklistDeck" name="jpdbBlacklistDeck" />
+              </div>
+              <p style="opacity: 0.8">Default: <code>blacklist</code></p>
+            </div>
+            <div>
+              <label for="jpdbNeverForgetDeck">Never Forget Deck</label>
+              <div class="inline-group">
+                <input type="text" id="jpdbNeverForgetDeck" name="jpdbNeverForgetDeck" />
+              </div>
+              <p style="opacity: 0.8">Default: <code>never-forget</code></p>
+            </div>
+            <div>
+              <label for="jpdbSuspendDeck">Suspend Deck</label>
+              <div class="inline-group">
+                <input type="text" id="jpdbSuspendDeck" name="jpdbSuspendDeck" placeholder="Deck name or ID" />
+              </div>
             </div>
           </div>
         </div>
@@ -133,7 +207,7 @@
       <div id="export" class="section">
         <h6>Import / Export</h6>
 
-        <div class="checkbox" data-show="jitenApiKey">
+        <div class="checkbox" data-show="jitenApiKey || jpdbApiToken">
           <input type="checkbox" id="exportApiKey" internal />
           <label for="exportApiKey">Also export API key</label>
         </div>
@@ -143,7 +217,7 @@
 
         <div class="form-box-parent">
           <div class="form-box">
-            <div data-show="jitenApiKey">
+            <div data-show="jitenApiKey || jpdbApiToken">
               <input
                 type="submit"
                 class="outline"
@@ -223,7 +297,7 @@
         </details>
       </div>
 
-      <div id="text-highlighting" class="section" data-show="jitenApiKey">
+      <div id="text-highlighting" class="section" data-show="jitenApiKey || jpdbApiToken">
         <h6>Text Highlighting</h6>
 
         <div class="form-box-parent">
@@ -314,7 +388,7 @@
         </div>
       </div>
 
-      <div id="popup" class="section" data-show="jitenApiKey">
+      <div id="popup" class="section" data-show="jitenApiKey || jpdbApiToken">
         <h6>Popup</h6>
         <div class="form-box-parent">
           <div class="form-box">
@@ -493,7 +567,7 @@
         </div>
       </div>
 
-      <div id="keybinds" class="section" data-show="jitenApiKey">
+      <div id="keybinds" class="section" data-show="jitenApiKey || jpdbApiToken">
         <h6>Keybinds</h6>
         <details class="accordion">
           <summary>Keybind help</summary>
@@ -597,7 +671,7 @@
         </details>
       </div>
 
-      <div id="status-bar" class="section" data-show="jitenApiKey">
+      <div id="status-bar" class="section" data-show="jitenApiKey || jpdbApiToken">
         <h6>Status Bar</h6>
         <div class="form-box-parent">
           <div class="form-box">
@@ -652,7 +726,7 @@
         </div>
       </div>
 
-      <details id="parsing" class="section-collapsible" data-show="jitenApiKey">
+      <details id="parsing" class="section-collapsible" data-show="jitenApiKey || jpdbApiToken">
         <summary>Parsing</summary>
         <div class="form-box-parent">
           <div class="form-box">
@@ -735,7 +809,7 @@
         </div>
       </details>
 
-      <details id="features" class="section-collapsible" data-show="jitenApiKey">
+      <details id="features" class="section-collapsible" data-show="jitenApiKey || jpdbApiToken">
         <summary>Features</summary>
 
         <div class="form-box-parent">
@@ -753,7 +827,7 @@
         </div>
       </details>
 
-      <details id="other" class="section-collapsible" data-show="jitenApiKey">
+      <details id="other" class="section-collapsible" data-show="jitenApiKey || jpdbApiToken">
         <summary>Other</summary>
         <div class="form-box-parent">
           <div class="form-box">

@@ -12,6 +12,7 @@ import { openView } from '@shared/extension/open-view';
 import { ParsePageCommand } from '@shared/messages/foreground/parse-page.command';
 import { ParseSelectionCommand } from '@shared/messages/foreground/parse-selection.command';
 import { onBroadcastMessage } from '@shared/messages/receiving/on-broadcast-message';
+import { invalidateProviderCache } from '@shared/providers/get-providers';
 import { DEFAULT_WORD_STYLE_CONFIG } from '@shared/word-style/themes';
 import { ForgetCardCommandHandler } from './jiten-card-actions/forget-card-command.handler';
 import { GradeCardCommandHandler } from './jiten-card-actions/grade-card-command.handler';
@@ -71,9 +72,12 @@ handlerCollection.listen();
 onBroadcastMessage('profileSwitched', () => {
   invalidateProfileCache();
   invalidateSetConfigurationCache();
+  invalidateProviderCache();
 });
 
 onBroadcastMessage('configurationUpdated', async () => {
+  invalidateProviderCache();
+
   const tabIds = getStyledTabIds();
 
   for (const tabId of tabIds) {

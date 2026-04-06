@@ -11,6 +11,7 @@ import { ping } from '@shared/jiten/ping';
 import { ConfigurationUpdatedCommand } from '@shared/messages/broadcast/configuration-updated.command';
 import { ProfileSwitchedCommand } from '@shared/messages/broadcast/profile-switched.command';
 import { onBroadcastMessage } from '@shared/messages/receiving/on-broadcast-message';
+import { jpdbPing } from '@shared/providers/jpdb/api';
 import { getThemeCssVars } from '@shared/theme/get-theme-css-vars';
 import { HTMLFeaturesInputElement } from './elements/html-features-input-element';
 import { HTMLKeybindInputElement } from './elements/html-keybind-input-element';
@@ -45,6 +46,7 @@ const validators: Partial<
   Record<keyof ConfigurationSchema, (value: unknown) => boolean | Promise<boolean>>
 > = {
   jitenApiKey: validateJitenApiKey,
+  jpdbApiToken: validateJpdbApiToken,
 };
 
 const configurationUpdatedCommand = new ConfigurationUpdatedCommand();
@@ -193,6 +195,25 @@ withElement('#apiTokenButton', (button) => {
   };
 });
 
+withElement('#jpdbApiKeyRevealButton', (button: HTMLInputElement) => {
+  button.onclick = (): void => {
+    withElement('#jpdbApiToken', (input: HTMLInputElement) => {
+      const revealed = input.type === 'text';
+
+      input.type = revealed ? 'password' : 'text';
+      button.style.textDecoration = revealed ? '' : 'line-through';
+    });
+  };
+});
+
+withElement('#jpdbApiTokenButton', (button) => {
+  button.onclick = (): void => {
+    withElement('#jpdbApiToken', (i: HTMLInputElement) => {
+      void validateJpdbApiToken(i.value);
+    });
+  };
+});
+
 withElement('#export-settings', (button) => {
   button.onclick = (event: Event): void => {
     event.stopPropagation();
@@ -205,7 +226,7 @@ withElement('#export-settings', (button) => {
 
       if (!includeApiKey) {
         Object.keys(configuration).forEach((key) => {
-          if (key.includes('jitenApiKey')) {
+          if (key.includes('jitenApiKey') || key.includes('jpdbApiToken')) {
             delete configuration[key];
           }
         });
@@ -754,6 +775,28 @@ async function validateJitenApiKey(value: string): Promise<boolean> {
 
   const button = findElement('#apiTokenButton');
   const input = findElement('#jitenApiKey');
+
+  button.classList.toggle('v1', !isValid);
+  input.classList.toggle('v1', !isValid);
+
+  return isValid;
+}
+
+async function validateJpdbApiToken(value: string): Promise<boolean> {
+  let isValid = false;
+
+  if (value?.length) {
+    try {
+      await jpdbPing({ apiToken: value });
+
+      isValid = true;
+    } catch (_e) {
+      /* NOP */
+    }
+  }
+
+  const button = findElement('#jpdbApiTokenButton');
+  const input = findElement('#jpdbApiToken');
 
   button.classList.toggle('v1', !isValid);
   input.classList.toggle('v1', !isValid);

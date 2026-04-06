@@ -2,6 +2,7 @@ import { MessageSender } from '@shared/extension/types';
 import { JitenToken } from '@shared/jiten/types';
 import { SequenceErrorCommand } from '@shared/messages/foreground/sequence-error.command';
 import { SequenceSuccessCommand } from '@shared/messages/foreground/sequence-success.command';
+import { getParsingProvider } from '@shared/providers/get-providers';
 import { Parser } from './parser';
 import { Batch, Handle } from './parser.types';
 import { WorkerQueue } from './worker-queue';
@@ -78,7 +79,11 @@ export class ParseController {
   private queueBatches(batches: Batch[]): void {
     for (const batch of batches) {
       this._workerQueue.push(
-        () => new Parser(batch).parse(),
+        async () => {
+          const provider = await getParsingProvider();
+
+          return new Parser(batch, provider).parse();
+        },
         (e) => batch.handles.forEach((handle) => handle.reject(e)),
         this.JITEN_TIMEOUT,
       );

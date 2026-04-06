@@ -14,7 +14,7 @@ export class ParseCommandHandler extends BackgroundCommandHandler<ParseCommand> 
 
   private _failToast = new ToastCommand(
     'error',
-    'Jiten API key is not set. Please set it in the extension settings.',
+    'API key is not set. Please set it in the extension settings.',
   );
 
   constructor(private _parseController: ParseController) {
@@ -25,9 +25,13 @@ export class ParseCommandHandler extends BackgroundCommandHandler<ParseCommand> 
     sender: MessageSender,
     data: [sequenceId: number, text: string][],
   ): Promise<void> {
-    const jitenApiKey = await getConfiguration('jitenApiKey');
+    const provider = await getConfiguration('parsingProvider');
+    const apiKey =
+      provider === 'jpdb'
+        ? await getConfiguration('jpdbApiToken')
+        : await getConfiguration('jitenApiKey');
 
-    if (!jitenApiKey?.length) {
+    if (!apiKey?.length) {
       await this._failToast.call(sender.tab!.id!);
       await openOptionsPage();
 

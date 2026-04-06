@@ -1,11 +1,16 @@
 import { DeckConfiguration, DiscoverWordConfiguration } from '../anki/types';
 import { JitenCardState } from '../jiten/types';
+import { ProviderType } from '../providers/types';
 import { WordStyleConfig } from '../word-style/types';
 
 export type Keybind = { key: string; code: string; modifiers: string[] };
 export type Keybinds = Keybind | [Keybind?, Keybind?];
 export type ConfigurationSchema = {
   schemaVersion: number;
+
+  //#region Provider Selection
+  parsingProvider: ProviderType;
+  //#endregion
 
   //#region Theme
   themeBgColour: string;
@@ -16,6 +21,15 @@ export type ConfigurationSchema = {
 
   jitenApiKey: string;
   jitenApiEndpoint: string;
+
+  //#endregion
+  //#region JPDB Integration
+
+  jpdbApiToken: string;
+  jpdbMiningDeck: string;
+  jpdbBlacklistDeck: string;
+  jpdbNeverForgetDeck: string;
+  jpdbSuspendDeck: string;
 
   //#endregion
   //#region Mining configuration

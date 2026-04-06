@@ -1,5 +1,6 @@
 import { addContextMenu } from '@shared/extension/add-context-menu';
 import { openNewTab } from '@shared/extension/open-new-tab';
+import { getCardActionProvider } from '@shared/providers/get-providers';
 
 export class LookupController {
   constructor() {
@@ -18,9 +19,10 @@ export class LookupController {
       return;
     }
 
-    const urlEncoded = encodeURIComponent(text);
-    const url = `https://jiten.moe/parse?text=${urlEncoded}`;
+    void getCardActionProvider().then((provider) => {
+      const url = provider.getLookupUrl(text);
 
-    void openNewTab(url);
+      void openNewTab(url);
+    });
   }
 }

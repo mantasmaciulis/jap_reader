@@ -5,15 +5,28 @@ import { ConfigurationSchema } from './types';
 export const DEFAULT_CONFIGURATION = Object.freeze<ConfigurationSchema>({
   schemaVersion: 1,
 
+  //#region Provider Selection
+  parsingProvider: 'jiten',
+  //#endregion
+
   //#region Theme
   themeBgColour: '#181818',
   themeAccentColour: '#D8B9FA',
   //#endregion
 
-  //#region JPDB Integration
+  //#region Jiten Integration
 
   jitenApiKey: '',
   jitenApiEndpoint: 'https://api.jiten.moe/api',
+
+  //#endregion
+  //#region JPDB Integration
+
+  jpdbApiToken: '',
+  jpdbMiningDeck: '',
+  jpdbBlacklistDeck: 'blacklist',
+  jpdbNeverForgetDeck: 'never-forget',
+  jpdbSuspendDeck: '',
 
   //#endregion
   //#region Mining configuration

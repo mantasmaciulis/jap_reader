@@ -103,6 +103,7 @@ export class Popup {
   private _showConjugations: boolean;
   private _showPitchDiagrams: boolean;
   private _disableHeadWordLink: boolean;
+  private _parsingProvider: string;
 
   private _hideTimer?: NodeJS.Timeout;
   private _isHover?: boolean;
@@ -207,6 +208,7 @@ export class Popup {
     this._showConjugations = await getConfiguration('showConjugations');
     this._showPitchDiagrams = await getConfiguration('showPitchDiagrams');
     this._disableHeadWordLink = await getConfiguration('disableHeadWordLink');
+    this._parsingProvider = await getConfiguration('parsingProvider');
 
     this._themeStyles.textContent = await getThemeCssVars();
     this._customStyles.textContent = await getConfiguration('customPopupCSS');
@@ -676,7 +678,7 @@ export class Popup {
   }
 
   private getReadingBlock(card: JitenCard): HTMLElement {
-    const { wordId, spelling, readingIndex, wordWithReading } = card;
+    const { wordId, spelling, reading, readingIndex, wordWithReading } = card;
     const nodes = this.convertToRubyNodes(wordWithReading ?? spelling);
 
     if (this._disableHeadWordLink) {
@@ -690,7 +692,10 @@ export class Popup {
       return span;
     }
 
-    const url = `https://jiten.moe/vocabulary/${wordId}/${readingIndex}`;
+    const url =
+      this._parsingProvider === 'jpdb'
+        ? `https://jpdb.io/vocabulary/${wordId}/${encodeURIComponent(spelling)}/${encodeURIComponent(reading)}`
+        : `https://jiten.moe/vocabulary/${wordId}/${readingIndex}`;
 
     const a = createElement('a', {
       id: 'link',

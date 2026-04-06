@@ -1,7 +1,7 @@
 import { MessageSender } from '@shared/extension/types';
-import { review } from '@shared/jiten/review';
 import { JitenRating } from '@shared/jiten/types';
 import { GradeCardCommand } from '@shared/messages/background/grade-card.command';
+import { getCardActionProvider } from '@shared/providers/get-providers';
 import { BackgroundCommandHandler } from '../lib/background-command-handler';
 
 export class GradeCardCommandHandler extends BackgroundCommandHandler<GradeCardCommand> {
@@ -13,6 +13,8 @@ export class GradeCardCommandHandler extends BackgroundCommandHandler<GradeCardC
     readingIndex: number,
     rating: JitenRating,
   ): Promise<void> {
-    await review(rating, wordId, readingIndex);
+    const provider = await getCardActionProvider();
+
+    await provider.review(rating, wordId, readingIndex);
   }
 }

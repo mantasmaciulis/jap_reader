@@ -1,9 +1,7 @@
 import { getConfiguration } from '@shared/configuration/get-configuration';
 import { MessageSender } from '@shared/extension/types';
-import { addVocabulary } from '@shared/jiten/add-vocabulary';
-import { removeVocabulary } from '@shared/jiten/remove-vocabulary';
-import { setCardSentence } from '@shared/jiten/set-card-sentence';
 import { RunDeckActionCommand } from '@shared/messages/background/run-deck-action.command';
+import { getCardActionProvider } from '@shared/providers/get-providers';
 import { BackgroundCommandHandler } from '../lib/background-command-handler';
 
 export class RunDeckActionCommandHandler extends BackgroundCommandHandler<RunDeckActionCommand> {
@@ -18,13 +16,16 @@ export class RunDeckActionCommandHandler extends BackgroundCommandHandler<RunDec
     sentence?: string,
   ): Promise<void> {
     const addSentence = await getConfiguration('setSentences');
+    const provider = await getCardActionProvider();
 
-    const fn = action === 'add' ? addVocabulary : removeVocabulary;
-
-    await fn(deck, wordId, readingIndex);
+    if (action === 'add') {
+      await provider.addToDeck(deck, wordId, readingIndex);
+    } else {
+      await provider.removeFromDeck(deck, wordId, readingIndex);
+    }
 
     if (addSentence && sentence?.length && action === 'add' && deck === 'mining') {
-      await setCardSentence(wordId, readingIndex, sentence);
+      await provider.setSentence(wordId, readingIndex, sentence);
     }
   }
 }
