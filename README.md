@@ -6,6 +6,8 @@ A browser extension for parsing Japanese text on any webpage, with SRS integrati
 
 > **Status:** Most features work well in JPDB mode. Jiten mode has not been thoroughly tested yet. Expect rough edges.
 
+![Popup UI](store/popup.png)
+
 ## What's different from the upstream forks
 
 - **Dual provider support** — choose between Jiten or JPDB for parsing and SRS, switchable from settings
