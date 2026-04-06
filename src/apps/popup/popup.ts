@@ -15,7 +15,7 @@ import { GradingController } from './actions/grading-controller';
 import { MiningController } from './actions/mining-controller';
 import { RotationController } from './actions/rotation-controller';
 import { ConfirmDialog } from './confirm-dialog';
-import { PARTS_OF_SPEECH } from './part-of-speech';
+import { PARTS_OF_SPEECH, PARTS_OF_SPEECH_SHORT } from './part-of-speech';
 
 export class Popup {
   private _keyManager = new KeybindManager([], {
@@ -65,16 +65,18 @@ export class Popup {
       }),
     ],
   });
-  /** Contains the buttons to manage the card and its decks */
-  private _mineButtons = createElement('section', { id: 'mining', class: ['controls'] });
   /** Contains the buttons to manage the card rotation */
   private _rotateButtons = createElement('section', { id: 'rotation', class: ['controls'] });
-  /** Contains the buttons to manage card states */
-  private _gradeButtons = createElement('section', { id: 'grading', class: ['controls'] });
+  /** Contains the grading buttons and the more-actions menu */
+  private _actionBar = createElement('section', { id: 'action-bar', class: ['controls'] });
+  /** Dropdown menu for deck actions (never-forget, blacklist, forget) */
+  private _moreMenu = createElement('div', { id: 'more-menu' });
   /** Contains the header data - all information about a word except its meaning */
   private _context = createElement('section', { id: 'context' });
   /** Contains the various meanings of a word */
   private _details = createElement('section', { id: 'details' });
+  /** Instant tooltip for POS labels */
+  private _tooltip = createElement('div', { id: 'pos-tooltip' });
 
   //#endregion
 
@@ -97,9 +99,6 @@ export class Popup {
   private _hideAfterAction: boolean;
   private _disableFadeAnimation: boolean;
   private _leftAlignPopupToWord: boolean;
-  private _moveMiningActions: boolean;
-  private _moveRotationActions: boolean;
-  private _moveGradingActions: boolean;
   private _showConjugations: boolean;
   private _showPitchDiagrams: boolean;
   private _disableHeadWordLink: boolean;
@@ -114,7 +113,6 @@ export class Popup {
   private _cardContext?: HTMLElement;
   private _conjugations?: string[];
   private _card?: JitenCard;
-  private _sentence?: string;
 
   constructor(
     private _mining: MiningController,
@@ -137,10 +135,9 @@ export class Popup {
     onBroadcastMessage('configurationUpdated', () => this.applyConfiguration(), true);
   }
 
-  public show(context: HTMLElement, sentence?: string): void {
+  public show(context: HTMLElement, _sentence?: string): void {
     this._cardContext = context;
     this._card = Registry.getCardFromElement(context);
-    this._sentence = sentence;
     this._conjugations = Registry.getConjugations(context);
 
     this.clearTimer();
@@ -202,9 +199,6 @@ export class Popup {
 
     this._renderCloseButton = await getConfiguration('renderCloseButton');
     this._touchscreenSupport = await getConfiguration('touchscreenSupport');
-    this._moveMiningActions = await getConfiguration('moveMiningActions');
-    this._moveRotationActions = await getConfiguration('moveRotateActions');
-    this._moveGradingActions = await getConfiguration('moveGradingActions');
     this._showConjugations = await getConfiguration('showConjugations');
     this._showPitchDiagrams = await getConfiguration('showPitchDiagrams');
     this._disableHeadWordLink = await getConfiguration('disableHeadWordLink');
@@ -216,9 +210,8 @@ export class Popup {
     this._closeButton.style.display =
       this._touchscreenSupport && this._renderCloseButton ? 'flex' : 'none';
 
-    this.updateMiningButtons();
+    this.updateActionBar();
     this.updateRotationButtons();
-    this.updateGradingButtons();
     this.applyPositions();
   }
 
@@ -236,6 +229,7 @@ export class Popup {
       this._themeStyles,
       this._customStyles,
       this._popup,
+      this._tooltip,
     );
 
     this._confirmDialog = new ConfirmDialog(shadowRoot, () => ({
@@ -440,43 +434,107 @@ export class Popup {
   //#endregion
   //#region Button Renderer
 
-  private updateMiningButtons(): void {
-    const performDeckAction = (
-      action: 'add' | 'remove',
-      key: 'mining' | 'neverForget' | 'blacklist' | 'suspend',
-      sentence?: string,
-    ): void => this._mining.addOrRemove(action, key, this._card!, sentence);
+  private updateActionBar(): void {
+    const gradeButtons = this._grading.getGradingActions().map((grade) =>
+      createElement('a', {
+        id: grade,
+        class: ['outline', grade],
+        innerText: grade,
+        handler: () => this._grading.gradeCard(this._card!, grade),
+      }),
+    );
+
+    const moreButton = createElement('a', {
+      id: 'more-btn',
+      class: ['outline', 'more'],
+      handler: () => this.toggleMoreMenu(),
+    });
+
+    this.buildMoreMenu();
+
+    const showGrading = this._grading.showActions;
+    const showMining = this._mining.showActions;
+
+    this._actionBar.replaceChildren(
+      ...(showGrading ? gradeButtons : []),
+      ...(showMining ? [moreButton] : []),
+      this._moreMenu,
+    );
+
+    this._actionBar.style.display = showGrading || showMining ? '' : 'none';
+  }
+
+  private buildMoreMenu(): void {
     const performFlaggedDeckAction = (key: 'neverForget' | 'blacklist' | 'suspend'): void => {
       const action = this.cardHasState(key, this._card!) ? 'remove' : 'add';
 
-      performDeckAction(action, key);
+      this._mining.addOrRemove(action, key, this._card!);
     };
 
-    this._mineButtons.replaceChildren();
-    this._mineButtons.style.display = this._mining.showActions ? '' : 'none';
+    const items: HTMLElement[] = [];
 
-    // this.addMiningButton("mining", 'mining', 'Add', () =>
-    //   performDeckAction('add', 'mining', this._sentence),
-    // );
-
-    this.addMiningButton('neverForget', 'never-forget', undefined, () =>
-      performFlaggedDeckAction('neverForget'),
-    );
-    this.addMiningButton('blacklist', 'blacklist', undefined, () =>
-      performFlaggedDeckAction('blacklist'),
-    );
-    // this.addMiningButton(this._mining.suspendDeck, 'suspend', undefined, () =>
-    //   performFlaggedDeckAction('suspend'),
-    // );
-
-    this._mineButtons.appendChild(
+    items.push(
       createElement('a', {
-        id: 'forget-deck',
-        class: ['outline', 'forget'],
-        innerText: 'Forget',
-        handler: () => void this.handleForgetClick(),
+        class: ['menu-item', 'never-forget'],
+        innerText: 'Never forget',
+        handler: () => {
+          performFlaggedDeckAction('neverForget');
+          this.hideMoreMenu();
+        },
       }),
     );
+
+    items.push(
+      createElement('a', {
+        class: ['menu-item', 'blacklist'],
+        innerText: 'Blacklist',
+        handler: () => {
+          performFlaggedDeckAction('blacklist');
+          this.hideMoreMenu();
+        },
+      }),
+    );
+
+    if (this._parsingProvider !== 'jpdb') {
+      items.push(
+        createElement('a', {
+          class: ['menu-item', 'forget'],
+          innerText: 'Forget',
+          handler: () => {
+            this.hideMoreMenu();
+            void this.handleForgetClick();
+          },
+        }),
+      );
+    }
+
+    this._moreMenu.replaceChildren(...items);
+  }
+
+  private toggleMoreMenu(): void {
+    this._moreMenu.classList.toggle('open');
+  }
+
+  private hideMoreMenu(): void {
+    this._moreMenu.classList.remove('open');
+  }
+
+  private showTooltip(text: string, anchor: HTMLElement): void {
+    this._tooltip.textContent = text;
+    this._tooltip.classList.add('visible');
+
+    const anchorRect = anchor.getBoundingClientRect();
+    const popupRect = this._popup.getBoundingClientRect();
+
+    const left = anchorRect.left - popupRect.left;
+    const top = anchorRect.top - popupRect.top - 4;
+
+    this._tooltip.style.left = `${left}px`;
+    this._tooltip.style.top = `${top}px`;
+  }
+
+  private hideTooltip(): void {
+    this._tooltip.classList.remove('visible');
   }
 
   private async handleForgetClick(): Promise<void> {
@@ -502,26 +560,6 @@ export class Popup {
     });
   }
 
-  private addMiningButton(
-    deck: string | undefined,
-    id: string,
-    text?: string,
-    handler?: () => void,
-  ): void {
-    if (!deck?.length) {
-      return;
-    }
-
-    this._mineButtons.appendChild(
-      createElement('a', {
-        id: `${id}-deck`,
-        class: ['outline', id],
-        innerText: text,
-        handler,
-      }),
-    );
-  }
-
   private updateRotationButtons(): void {
     const previous = createElement('a', {
       id: 'previous',
@@ -540,37 +578,14 @@ export class Popup {
     this._rotateButtons.style.display = this._rotation.showActions ? '' : 'none';
   }
 
-  private updateGradingButtons(): void {
-    const gradeButtons = this._grading.getGradingActions().map((grade) =>
-      createElement('a', {
-        id: grade,
-        class: ['outline', grade],
-        innerText: grade,
-        handler: () => this._grading.gradeCard(this._card!, grade),
-      }),
-    );
-
-    this._gradeButtons.replaceChildren(...gradeButtons);
-    this._gradeButtons.style.display = this._grading.showActions ? '' : 'none';
-  }
-
   private applyPositions(): void {
-    const sections = [this._closeButton, this._context, this._details];
-    const before: HTMLElement[] = [];
-    const after: HTMLElement[] = [];
-
-    const miningTarget = this._moveMiningActions ? after : before;
-    const rotationTarget = this._moveRotationActions ? after : before;
-    const gradingTarget = this._moveGradingActions ? after : before;
-
-    miningTarget.push(this._mineButtons);
-    rotationTarget.push(this._rotateButtons);
-    gradingTarget.push(this._gradeButtons);
-
-    sections.unshift(...before);
-    sections.push(...after);
-
-    this._popup.replaceChildren(...sections);
+    this._popup.replaceChildren(
+      this._closeButton,
+      this._context,
+      this._details,
+      this._actionBar,
+      this._rotateButtons,
+    );
   }
 
   //#endregion
@@ -594,27 +609,24 @@ export class Popup {
       return;
     }
 
-    this.adjustMiningButtons(this._card);
+    this.adjustMoreMenu(this._card);
     this.adjustRotateButtons(this._card);
+    this.hideMoreMenu();
     this.adjustContext(this._card);
     this.adjustDetails(this._card);
 
     this._popup.setAttribute('class', `popup ${this._card.cardState.join(' ')}`);
   }
 
-  private adjustMiningButtons(card: JitenCard): void {
+  private adjustMoreMenu(card: JitenCard): void {
     const isNF = this.cardHasState('neverForget', card);
     const isBL = this.cardHasState('blacklist', card);
-    const isSP = this.cardHasState('suspend', card);
 
-    withElement(this._mineButtons, '#never-forget-deck', (el) => {
+    withElement(this._moreMenu, '.never-forget', (el) => {
       el.innerText = isNF ? 'Remove Never Forget' : 'Never forget';
     });
-    withElement(this._mineButtons, '#blacklist-deck', (el) => {
+    withElement(this._moreMenu, '.blacklist', (el) => {
       el.innerText = isBL ? 'Remove Blacklist' : 'Blacklist';
-    });
-    withElement(this._mineButtons, '#suspend-deck', (el) => {
-      el.innerText = isSP ? 'Unsuspend' : 'Suspend';
     });
   }
 
@@ -667,12 +679,18 @@ export class Popup {
       createElement('div', {
         id: 'header',
         class: 'subsection',
-        children: [this.getReadingBlock(card), this.getCardStateBlock(card)],
+        children: [
+          this.getReadingBlock(card),
+          createElement('div', {
+            id: 'header-meta',
+            children: [this.getCardStateBlock(card), this.getFrequencyBlock(card)],
+          }),
+        ],
       }),
       createElement('div', {
         id: 'meta',
         class: 'subsection',
-        children: [this.getPitchAccentBlock(card), this.getFrequencyBlock(card)],
+        children: [this.getPitchAccentBlock(card)],
       }),
     );
   }
@@ -851,7 +869,7 @@ export class Popup {
 
     return createElement('div', {
       id: 'frequency',
-      innerText: `#${frequencyRank}`,
+      innerText: frequencyRank ? `#${frequencyRank}` : '',
     });
   }
 
@@ -892,9 +910,24 @@ export class Popup {
         createElement('div', {
           class: 'pos',
           children: partsOfSpeech
-            .map((pos) => PARTS_OF_SPEECH[pos] ?? 'Unknown')
-            .filter(Boolean)
-            .map((pos) => createElement('span', { innerText: pos })),
+            .map((pos) => ({
+              short: PARTS_OF_SPEECH_SHORT[pos] ?? PARTS_OF_SPEECH[pos] ?? pos,
+              full: PARTS_OF_SPEECH[pos] ?? pos,
+            }))
+            .filter(({ short }) => Boolean(short))
+            .map(({ short, full }) =>
+              createElement('span', {
+                innerText: short,
+                events:
+                  short !== full
+                    ? {
+                        onmouseenter: (e: MouseEvent): void =>
+                          this.showTooltip(full, e.target as HTMLElement),
+                        onmouseleave: (): void => this.hideTooltip(),
+                      }
+                    : {},
+              }),
+            ),
         }),
         createElement('ol', {
           attributes: {

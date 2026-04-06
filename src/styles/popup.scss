@@ -5,249 +5,553 @@
 @use 'theme/_forms';
 @use 'theme/_outline';
 
+// ─── Design tokens ──────────────────────────────────────
+$popup-radius: 10px;
+$popup-min-width: 240px;
+$popup-max-width: 380px;
+$popup-max-height: 240px;
+$popup-bg: var(--jiten-bg, #181818);
+$popup-surface: rgba(255, 255, 255, 0.03);
+$popup-border: rgba(255, 255, 255, 0.14);
+$popup-text: #c8c8c8;
+$popup-text-muted: #787878;
+$popup-accent: var(--jiten-accent, #D8B9FA);
+$popup-shadow:
+  0 2px 4px rgba(0, 0, 0, 0.3),
+  0 8px 24px rgba(0, 0, 0, 0.4),
+  0 0 0 1px rgba(255, 255, 255, 0.04);
+
+// color-mix helper: works at runtime with CSS variables
+@mixin tinted-border($color, $pct: 20%) {
+  border-color: color-mix(in srgb, #{$color} $pct, transparent);
+}
+@mixin tinted-bg($color, $pct: 8%) {
+  background: color-mix(in srgb, #{$color} $pct, transparent);
+}
+@mixin tinted-shadow($color, $pct: 10%) {
+  box-shadow: 0 0 8px color-mix(in srgb, #{$color} $pct, transparent);
+}
+
+// ─── Popup shell ────────────────────────────────────────
 .popup {
-  width: 350px;
-  max-height: 250px;
+  min-width: $popup-min-width;
+  max-width: $popup-max-width;
+  width: max-content;
+  max-height: $popup-max-height;
 
   display: flex;
   flex-direction: column;
-  gap: 0.5em;
 
   margin: 0;
-  padding: 0.5em;
-  border-radius: 0.5em;
+  padding: 0;
+  border-radius: $popup-radius;
 
-  color: map.get(colors.$colors, text-color);
-  background-color: map.get(colors.$colors, background-color);
-  box-shadow: 5px 5px 15px 0px rgba(0, 0, 0, 0.5);
+  color: $popup-text;
+  background-color: $popup-bg;
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, transparent 40%);
+  box-shadow: $popup-shadow;
 
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  overflow: hidden;
+
+  // ─── Tab bar (future) ───────────────────────────────
+  .tab-bar {
+    display: flex;
+    gap: 0;
+    padding: 0 12px;
+    border-bottom: 1px solid $popup-border;
+    background: $popup-surface;
+
+    .tab {
+      padding: 8px 14px;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      color: $popup-text-muted;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: color 0.15s, border-color 0.15s;
+      user-select: none;
+
+      &:hover {
+        color: $popup-text;
+      }
+
+      &.active {
+        color: $popup-accent;
+        border-bottom-color: $popup-accent;
+      }
+    }
+  }
+
+  // ─── Controls (mining, grading, rotation) ───────────
   section {
     &.controls {
       display: flex;
       flex-direction: row;
-      gap: 0.5em;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 6px 14px;
+      border-top: 1px solid $popup-border;
+
+      &:last-child {
+        padding-bottom: 12px;
+      }
+
+      // Collapse border between adjacent control sections
+      & + .controls {
+        border-top: none;
+        padding-top: 0;
+      }
 
       a {
-        line-height: 0.7em;
-        height: 1.2em;
-        font-size: 0.7em;
-        padding: 0.5em 0.5em 0 0.5em;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 28px;
+        padding: 0 14px;
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: 0.01em;
+        border-radius: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.06);
+        transition: all 0.15s ease;
+        cursor: pointer;
+        text-decoration: none;
+        line-height: 1;
+        white-space: nowrap;
+        user-select: none;
 
         &:hover {
-          filter: brightness(1.2);
+          background: rgba(255, 255, 255, 0.06);
+          border-color: rgba(255, 255, 255, 0.12);
         }
 
         &:active {
-          filter: brightness(0.8);
+          transform: scale(0.97);
         }
       }
 
-      &#mining,
       &#rotation {
         @each $id, $color in colors.$decks {
           .#{$id} {
             color: $color;
-            border-color: $color;
-            box-shadow: inset 0 0 3px $color;
+            @include tinted-border($color, 20%);
+
+            &:hover {
+              @include tinted-border($color, 40%);
+              @include tinted-bg($color, 8%);
+              @include tinted-shadow($color, 10%);
+            }
           }
         }
       }
 
-      &#grading {
+      &#action-bar {
+        position: relative;
+        align-items: center;
+
         @each $id, $color in colors.$grades {
           .#{$id} {
             color: $color;
-            border-color: $color;
-            box-shadow: inset 0 0 3px $color;
+            @include tinted-border($color, 20%);
+
+            &:hover {
+              @include tinted-border($color, 40%);
+              @include tinted-bg($color, 8%);
+              @include tinted-shadow($color, 10%);
+            }
+          }
+        }
+
+        .more {
+          width: 28px;
+          height: 28px;
+          padding: 0;
+          font-size: 16px;
+          color: #aaa;
+          border-color: rgba(255, 255, 255, 0.12);
+          background: rgba(255, 255, 255, 0.04);
+          margin-left: auto;
+
+          &::before {
+            content: '\22EE';
+          }
+
+          &:hover {
+            color: #ddd;
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+          }
+        }
+
+        #more-menu {
+          display: none;
+          position: absolute;
+          bottom: calc(100% + 4px);
+          right: 0;
+          min-width: 160px;
+          padding: 4px;
+          border-radius: 8px;
+          background: var(--jiten-bg, #181818);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          box-shadow:
+            0 4px 16px rgba(0, 0, 0, 0.4),
+            0 0 0 1px rgba(255, 255, 255, 0.03);
+          z-index: 10;
+          flex-direction: column;
+
+          &.open {
+            display: flex;
+          }
+
+          .menu-item {
+            display: flex;
+            align-items: center;
+            height: 28px;
+            padding: 0 10px;
+            font-size: 11px;
+            font-weight: 500;
+            border-radius: 5px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            transition: background 0.1s;
+            white-space: nowrap;
+            text-decoration: none;
+
+            @each $id, $color in colors.$decks {
+              &.#{$id} {
+                color: $color;
+              }
+            }
+
+            &.forget {
+              color: map.get(colors.$outlines, v1);
+            }
+
+            &:hover {
+              background: rgba(255, 255, 255, 0.06);
+            }
           }
         }
       }
 
       &#close {
         position: absolute;
-        top: 0.5em;
-        right: 0.5em;
+        top: 6px;
+        right: 6px;
+        padding: 0;
+        z-index: 1;
 
         a {
-          background-color: rgba(255, 255, 255, 0.1);
-          border: 0 solid currentColor;
-          border-radius: 4px;
-          color: map.get(colors.$colors, text-color);
-          opacity: 0.8;
-          transition: all 0.2s ease;
-          text-decoration: none;
-          user-select: none; // Prevent emoji selection
-
-          width: 32px;
-          height: 32px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
+          width: 26px;
+          height: 26px;
           padding: 0;
+          border-radius: 50%;
+          border: none;
+          background: rgba(255, 255, 255, 0.05);
+          color: $popup-text-muted;
+          font-size: 12px;
 
           &::before {
-            content: '❌';
-            font-size: 22px;
+            content: '\00D7';
+            font-size: 16px;
+            line-height: 1;
           }
 
           &:hover {
-            opacity: 1;
-            background-color: rgba(255, 0, 0, 0.1);
-            border-color: rgba(255, 0, 0, 0.8);
-            color: rgba(255, 0, 0, 0.8);
-          }
-
-          &:active {
-            background-color: rgba(255, 0, 0, 0.2);
+            background: rgba(255, 80, 80, 0.12);
+            color: #ff6b6b;
           }
         }
       }
     }
 
+    // ─── Context (header + meta) ────────────────────────
     &#context {
       display: flex;
       flex-direction: column;
-      gap: 0.5em;
+      gap: 6px;
+      padding: 14px 14px 0 14px;
 
       .subsection {
         display: flex;
         flex-direction: row;
         justify-content: space-between;
+        align-items: center;
+
+        &#header {
+          gap: 10px;
+        }
 
         #link {
-          font-size: 150%;
-          color: map.get(colors.$colors, link-color);
-          border-bottom: 1px dashed map.get(colors.$colors, link-underline-color);
+          font-size: 2em;
+          font-weight: 400;
+          color: $popup-accent;
+          text-decoration: none;
+          border: none;
+          letter-spacing: 0.02em;
+          transition: opacity 0.15s;
+          flex-shrink: 0;
+
+          ruby {
+            rt {
+              font-size: 50%;
+              color: #aaa;
+              font-weight: 400;
+            }
+          }
 
           &:hover {
-            border-bottom-style: solid;
+            opacity: 0.8;
           }
+        }
+
+        #header-meta {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          flex-shrink: 0;
         }
 
         #state {
           display: flex;
           flex-direction: row;
-          gap: 0.5em;
-          align-items: flex-end;
+          gap: 3px;
+          align-items: center;
 
           span {
-            font-size: 0.7em;
-            line-height: 0.7em;
-            text-decoration: underline;
-
-            padding: 0.5em;
+            font-size: 9px;
+            font-weight: 600;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+            text-decoration: none;
+            padding: 1px 5px;
+            border-radius: 3px;
+            line-height: 1.3;
 
             @each $id, $color in colors.$states {
               &.#{$id} {
                 color: $color;
+                background: color-mix(in srgb, #{$color} 10%, transparent);
               }
             }
           }
         }
 
+        #frequency {
+          font-size: 10px;
+          font-weight: 500;
+          font-variant-numeric: tabular-nums;
+          color: #999;
+          white-space: nowrap;
+        }
+
         &#meta {
           font-size: 12px;
           white-space: nowrap;
+          color: $popup-text-muted;
+          padding-bottom: 2px;
+          min-height: 0;
+
+          &:empty {
+            display: none;
+          }
 
           #pitch-accent {
             display: flex;
             flex-direction: row;
             align-items: center;
-            gap: 0.25em;
+            gap: 4px;
+
+            svg {
+              opacity: 0.85;
+            }
+
+            &:empty {
+              display: none;
+            }
           }
         }
       }
     }
 
+    // ─── Details (meanings) ─────────────────────────────
     &#details {
-      overflow: auto;
-      margin-top: 0.5em;
+      overflow-y: auto;
+      padding: 0 14px 12px 14px;
+      border-top: 1px solid $popup-border;
+      margin-top: 6px;
+
+      // Custom thin scrollbar
+      &::-webkit-scrollbar {
+        width: 4px;
+      }
+
+      &::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      &::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 2px;
+
+        &:hover {
+          background: rgba(255, 255, 255, 0.18);
+        }
+      }
 
       #conjugations {
-        font-size: 0.9em;
-        margin-bottom: 0.75em;
-        padding: 0.4em;
-        background-color: rgba(128, 128, 128, 0.1);
-        border-radius: 0.3em;
+        font-size: 12px;
+        margin: 10px 0 8px 0;
+        padding: 6px 10px;
+        background: $popup-surface;
+        border: 1px solid $popup-border;
+        border-radius: 6px;
+        color: $popup-text-muted;
 
         .label {
           font-weight: 600;
-          color: map.get(colors.$colors, text-color);
+          color: $popup-text;
         }
       }
 
       .pos {
         display: flex;
         flex-direction: row;
-        gap: 0.5em;
+        flex-wrap: wrap;
+        gap: 4px;
+        padding: 10px 0 4px 0;
+
+        &:first-child {
+          padding-top: 10px;
+        }
 
         span {
-          font-size: 0.7em;
-          line-height: 0.7em;
-          text-decoration: underline;
-
-          padding: 0.5em 0;
+          font-size: 10px;
+          font-weight: 600;
+          letter-spacing: 0.03em;
+          text-transform: uppercase;
+          text-decoration: none;
+          color: $popup-accent;
+          opacity: 0.7;
+          padding: 0;
+          line-height: 1;
         }
       }
 
       ol {
         margin: 0;
-        padding: 0 0 0 1.5em;
+        padding: 0 0 0 1.3em;
+
+        li {
+          font-size: 12.5px;
+          line-height: 1.55;
+          color: $popup-text;
+          padding: 1px 0;
+
+          &::marker {
+            color: $popup-text-muted;
+            font-size: 11px;
+          }
+        }
       }
     }
   }
 }
 
+// ─── POS tooltip ──────────────────────────────────────────
+#pos-tooltip {
+  position: absolute;
+  display: none;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.4;
+  color: $popup-text;
+  background: #222;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 5px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 20;
+  transform: translateY(-100%);
+
+  &.visible {
+    display: block;
+  }
+}
+
+// ─── Confirm dialog ───────────────────────────────────────
 #confirm-overlay {
   position: absolute;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 2147483647;
 
   #confirm-dialog {
-    background-color: map.get(colors.$colors, background-color);
-    border-radius: 0.5em;
-    padding: 1em;
+    background-color: var(--jiten-bg, #181818);
+    border: 1px solid $popup-border;
+    border-radius: $popup-radius;
+    padding: 16px;
     max-width: 300px;
-    box-shadow: 5px 5px 15px 0px rgba(0, 0, 0, 0.5);
+    box-shadow: $popup-shadow;
 
     #confirm-message {
-      color: map.get(colors.$colors, text-color);
-      margin: 0 0 1em 0;
-      font-size: 0.9em;
-      line-height: 1.4;
+      color: $popup-text;
+      margin: 0 0 14px 0;
+      font-size: 13px;
+      line-height: 1.5;
     }
 
     #confirm-buttons {
       display: flex;
-      gap: 0.5em;
+      gap: 8px;
       justify-content: flex-end;
 
       a.outline {
-        font-size: 0.8em;
-        padding: 0.4em 1em;
+        display: inline-flex;
+        align-items: center;
+        height: 28px;
+        padding: 0 14px;
+        font-size: 12px;
+        font-weight: 500;
+        border-radius: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.03);
         cursor: pointer;
+        transition: all 0.15s ease;
 
         @each $id, $color in colors.$decks {
           &.#{$id} {
             color: $color;
-            border-color: $color;
-            box-shadow: inset 0 0 3px $color;
+            border-color: color-mix(in srgb, #{$color} 20%, transparent);
+
+            &:hover {
+              border-color: color-mix(in srgb, #{$color} 40%, transparent);
+              background: color-mix(in srgb, #{$color} 8%, transparent);
+            }
           }
         }
 
         &:hover {
-          filter: brightness(1.2);
+          background: rgba(255, 255, 255, 0.06);
         }
 
         &:active {
-          filter: brightness(0.8);
+          transform: scale(0.97);
         }
       }
     }

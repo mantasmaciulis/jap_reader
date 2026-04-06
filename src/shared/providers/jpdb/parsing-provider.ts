@@ -17,6 +17,16 @@ const JPDB_STATE_MAP: Record<JPDBCardState, string> = {
   'not-in-deck': 'new',
 };
 
+function jpdbPitchToAccentNumber(pitch: string): number {
+  for (let i = 0; i < pitch.length - 1; i++) {
+    if (pitch[i] === 'H' && pitch[i + 1] === 'L') {
+      return i + 1;
+    }
+  }
+
+  return 0;
+}
+
 export class JpdbParsingProvider implements ParsingProvider {
   public readonly batchSize = 16384;
   public async parse(paragraphs: string[]): Promise<JitenToken[][]> {
@@ -39,11 +49,16 @@ export class JpdbParsingProvider implements ParsingProvider {
         meaningsChunks,
         meaningsPartOfSpeech,
         cardState,
+        pitchAccent,
       ] = vocab;
 
-      const mappedState = (cardState ?? [])
-        .map((s) => JPDB_STATE_MAP[s])
-        .filter((s): s is string => s !== undefined);
+      const mappedState = [
+        ...new Set(
+          (cardState ?? [])
+            .map((s) => JPDB_STATE_MAP[s])
+            .filter((s): s is string => s !== undefined),
+        ),
+      ];
 
       if (mappedState.length === 0) {
         mappedState.push('new');
@@ -61,7 +76,7 @@ export class JpdbParsingProvider implements ParsingProvider {
           partsOfSpeech: meaningsPartOfSpeech[i],
         })),
         cardState: mappedState,
-        pitchAccents: [],
+        pitchAccents: (pitchAccent ?? []).map(jpdbPitchToAccentNumber),
         wordWithReading: null,
       };
     });

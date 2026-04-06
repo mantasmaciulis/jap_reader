@@ -100,7 +100,7 @@ export const DEFAULT_CONFIGURATION = Object.freeze<ConfigurationSchema>({
   moveRotateActions: false,
 
   showConjugations: true,
-  showPitchDiagrams: true,
+  showPitchDiagrams: false,
   disableHeadWordLink: false,
 
   customPopupCSS: '',
