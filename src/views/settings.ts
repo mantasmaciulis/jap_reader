@@ -47,6 +47,7 @@ const validators: Partial<
 > = {
   jitenApiKey: validateJitenApiKey,
   jpdbApiToken: validateJpdbApiToken,
+  claudeApiKey: validateClaudeApiKey,
 };
 
 const configurationUpdatedCommand = new ConfigurationUpdatedCommand();
@@ -214,6 +215,25 @@ withElement('#jpdbApiTokenButton', (button) => {
   };
 });
 
+withElement('#claudeApiKeyRevealButton', (button: HTMLInputElement) => {
+  button.onclick = (): void => {
+    withElement('#claudeApiKey', (input: HTMLInputElement) => {
+      const revealed = input.type === 'text';
+
+      input.type = revealed ? 'password' : 'text';
+      button.style.textDecoration = revealed ? '' : 'line-through';
+    });
+  };
+});
+
+withElement('#claudeApiKeyTestButton', (button) => {
+  button.onclick = (): void => {
+    withElement('#claudeApiKey', (i: HTMLInputElement) => {
+      void validateClaudeApiKey(i.value);
+    });
+  };
+});
+
 withElement('#export-settings', (button) => {
   button.onclick = (event: Event): void => {
     event.stopPropagation();
@@ -226,7 +246,11 @@ withElement('#export-settings', (button) => {
 
       if (!includeApiKey) {
         Object.keys(configuration).forEach((key) => {
-          if (key.includes('jitenApiKey') || key.includes('jpdbApiToken')) {
+          if (
+            key.includes('jitenApiKey') ||
+            key.includes('jpdbApiToken') ||
+            key.includes('claudeApiKey')
+          ) {
             delete configuration[key];
           }
         });
@@ -797,6 +821,41 @@ async function validateJpdbApiToken(value: string): Promise<boolean> {
 
   const button = findElement('#jpdbApiTokenButton');
   const input = findElement('#jpdbApiToken');
+
+  button.classList.toggle('v1', !isValid);
+  input.classList.toggle('v1', !isValid);
+
+  return isValid;
+}
+
+async function validateClaudeApiKey(value: string): Promise<boolean> {
+  let isValid = false;
+
+  if (value?.length) {
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'x-api-key': value,
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json',
+          'anthropic-dangerous-direct-browser-access': 'true',
+        },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 1,
+          messages: [{ role: 'user', content: 'hi' }],
+        }),
+      });
+
+      isValid = response.ok;
+    } catch (_e) {
+      /* NOP */
+    }
+  }
+
+  const button = findElement('#claudeApiKeyTestButton');
+  const input = findElement('#claudeApiKey');
 
   button.classList.toggle('v1', !isValid);
   input.classList.toggle('v1', !isValid);

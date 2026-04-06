@@ -191,6 +191,64 @@
           </div>
         </div>
 
+        <div class="form-box-parent">
+          <div class="form-box" style="flex-direction: column">
+            <h6 style="margin: 0; font-size: 0.95em; opacity: 0.7">AI Features</h6>
+            <div>
+              <label for="claudeApiKey">Claude API Key</label>
+              <div class="inline-group">
+                <input type="password" id="claudeApiKey" name="claudeApiKey" />
+                <div>
+                  <input
+                    type="button"
+                    id="claudeApiKeyRevealButton"
+                    class="button outline small"
+                    value="👁"
+                  />
+                </div>
+                <div>
+                  <input
+                    type="button"
+                    id="claudeApiKeyTestButton"
+                    class="button outline small"
+                    value="⭯"
+                  />
+                </div>
+              </div>
+              <p style="opacity: 0.8">
+                Used for AI explanations of sentences and words in context.
+                Get your key from the
+                <a href="https://console.anthropic.com/settings/keys" target="_blank">Anthropic Console</a>.
+              </p>
+            </div>
+            <div data-show="claudeApiKey">
+              <label for="aiWordPrompt">Word Explanation Prompt</label>
+              <textarea
+                id="aiWordPrompt"
+                name="aiWordPrompt"
+                spellcheck="false"
+                style="height: 10em; margin-bottom: 0"
+              ></textarea>
+              <p style="opacity: 0.8">
+                System prompt for explaining a word in context. The user message will be:
+                <code>Sentence: ... Word: ...</code>
+              </p>
+            </div>
+            <div data-show="claudeApiKey">
+              <label for="aiSentencePrompt">Sentence Breakdown Prompt</label>
+              <textarea
+                id="aiSentencePrompt"
+                name="aiSentencePrompt"
+                spellcheck="false"
+                style="height: 10em; margin-bottom: 0"
+              ></textarea>
+              <p style="opacity: 0.8">
+                System prompt for breaking down a sentence. The user message will be the sentence itself.
+              </p>
+            </div>
+          </div>
+        </div>
+
         <div id="DEBUG_ANKI" class="form-box-parent" style="display: none">
           <div class="form-box">
             <div>

@@ -9,6 +9,51 @@ export const DEFAULT_CONFIGURATION = Object.freeze<ConfigurationSchema>({
   parsingProvider: 'jiten',
   //#endregion
 
+  //#region AI Features
+  claudeApiKey: '',
+  aiWordPrompt: `You are a language API that explains the specific nuance of specified word(s) in a sentence.
+
+Respond concisely in no more than 100 words.
+
+Specified word(s) MUST be in its original language.
+
+All other explanation text MUST be in English.
+
+In your response:
+
+DO NOT OUTPUT the language name or the word 'nuance';
+
+DO NOT OUTPUT the context sentence;
+
+DO NOT OUTPUT romaji/pinyin or any notes on pronunciation;
+
+Conclude with the specific nuance within the context sentence.
+
+Format your response using simple HTML tags: <b> for emphasis, <br> for line breaks. ALWAYS add furigana to ALL kanji using <ruby> tags, e.g. <ruby>食<rt>た</rt></ruby>べる. Never write kanji without furigana.`,
+  aiSentencePrompt: `You are a language API that does sentence breakdown-explanations.
+
+First, output a natural English translation of the full sentence on its own line.
+
+Then break down the sentence into SMALL chunks (1-3 words each, never whole clauses).
+
+For each chunk, output exactly 3 numbered items on ONE line:
+#1 chunk #2 meaning #3 grammar note
+
+Example output format:
+<b>The alchemist was banished from the court.</b><br><br>#1 <ruby>宮<rt>きゅう</rt></ruby><ruby>廷<rt>てい</rt></ruby>を #2 the court (object) #3 を marks the direct object<br>#1 <ruby>追<rt>つい</rt></ruby><ruby>放<rt>ほう</rt></ruby>されて #2 was banished #3 passive form of <ruby>追<rt>つい</rt></ruby><ruby>放<rt>ほう</rt></ruby>する + て-form
+
+Rules:
+- Chunks MUST be 1-3 words. Break large phrases into multiple chunks.
+- #1 is the original Japanese. #2 is a short English meaning. #3 is a brief grammar note.
+- Keep #3 under 15 words.
+- One chunk per line, separated by <br>.
+- DO NOT use dot-points, dashes, or labels like 'Chunk:'.
+- DO NOT output romaji/pinyin.
+- DO NOT output quotation marks.
+
+Format: use <b> for the translation line. ALWAYS add furigana to ALL kanji using <ruby> tags, e.g. <ruby>食<rt>た</rt></ruby>べる. Never write kanji without furigana.`,
+  //#endregion
+
   //#region Theme
   themeBgColour: '#181818',
   themeAccentColour: '#D8B9FA',

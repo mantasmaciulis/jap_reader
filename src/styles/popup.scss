@@ -340,6 +340,11 @@ $popup-shadow:
                 color: #ddd;
                 background: rgba(255, 255, 255, 0.07);
               }
+
+              &.active {
+                color: var(--jiten-accent, #D8B9FA);
+                background: rgba(255, 255, 255, 0.05);
+              }
             }
           }
         }
@@ -430,6 +435,49 @@ $popup-shadow:
 
         &:hover {
           background: rgba(255, 255, 255, 0.18);
+        }
+      }
+
+      .ai-loading {
+        padding: 12px 0;
+        font-size: 12px;
+        color: $popup-text-muted;
+        font-style: italic;
+      }
+
+      .ai-result {
+        padding: 10px 0;
+
+        .ai-sentence {
+          font-size: 13px;
+          line-height: 1.7;
+          color: #aaa;
+          padding: 0 0 4px 0;
+          border-bottom: 1px solid $popup-border;
+          margin-bottom: 4px;
+        }
+
+        .ai-label {
+          font-size: 9px;
+          font-weight: 600;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+          color: $popup-accent;
+          opacity: 0.6;
+          margin-bottom: 6px;
+        }
+
+        .ai-text {
+          font-size: 12.5px;
+          line-height: 2;
+          color: $popup-text;
+
+          ruby {
+            rt {
+              font-size: 0.65em;
+              color: #999;
+            }
+          }
         }
       }
 

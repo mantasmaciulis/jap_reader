@@ -12,6 +12,12 @@ export type ConfigurationSchema = {
   parsingProvider: ProviderType;
   //#endregion
 
+  //#region AI Features
+  claudeApiKey: string;
+  aiWordPrompt: string;
+  aiSentencePrompt: string;
+  //#endregion
+
   //#region Theme
   themeBgColour: string;
   themeAccentColour: string;

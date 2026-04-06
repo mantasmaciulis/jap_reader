@@ -4,6 +4,8 @@ import { findElements } from '@shared/dom/find-elements';
 import { withElement } from '@shared/dom/with-element';
 import { getStyleUrl } from '@shared/extension/get-style-url';
 import { JitenCard, JitenCardState } from '@shared/jiten/types';
+import { ExplainSentenceCommand } from '@shared/messages/background/explain-sentence.command';
+import { ExplainWordCommand } from '@shared/messages/background/explain-word.command';
 import { ForgetCardCommand } from '@shared/messages/background/forget-card.command';
 import { UpdateCardStateCommand } from '@shared/messages/background/update-card-state.command';
 import { onBroadcastMessage } from '@shared/messages/receiving/on-broadcast-message';
@@ -113,6 +115,10 @@ export class Popup {
   private _cardContext?: HTMLElement;
   private _conjugations?: string[];
   private _card?: JitenCard;
+  private _sentence?: string;
+  private _sentenceHtml?: string;
+  private _activeView: 'dict' | 'sentence' | 'word' | 'history' = 'dict';
+  private _aiRequestId = 0;
 
   constructor(
     private _mining: MiningController,
@@ -135,9 +141,11 @@ export class Popup {
     onBroadcastMessage('configurationUpdated', () => this.applyConfiguration(), true);
   }
 
-  public show(context: HTMLElement, _sentence?: string): void {
+  public show(context: HTMLElement, sentence?: string): void {
     this._cardContext = context;
     this._card = Registry.getCardFromElement(context);
+    this._sentence = sentence;
+    this._sentenceHtml = this.buildSentenceWithFurigana();
     this._conjugations = Registry.getConjugations(context);
 
     this.clearTimer();
@@ -543,6 +551,174 @@ export class Popup {
     this._tooltip.classList.remove('visible');
   }
 
+  private sanitizeHtml(html: string): string {
+    const div = document.createElement('div');
+
+    div.innerHTML = html;
+
+    for (const el of Array.from(div.querySelectorAll('*'))) {
+      const tag = el.tagName.toLowerCase();
+
+      if (!['b', 'i', 'br', 'strong', 'em', 'ruby', 'rt'].includes(tag)) {
+        el.replaceWith(...Array.from(el.childNodes));
+      }
+
+      for (const attr of Array.from(el.attributes)) {
+        el.removeAttribute(attr.name);
+      }
+    }
+
+    return div.innerHTML;
+  }
+
+  private buildSentenceWithFurigana(): string {
+    if (!this._cardContext || !this._sentence) {
+      return '';
+    }
+
+    const parent = this._cardContext.parentElement;
+
+    if (!parent) {
+      return this._sentence;
+    }
+
+    const words = Array.from(parent.querySelectorAll('.jiten-word'));
+    const sentenceWords = words.filter(
+      (el) => Registry.wordEventDelegator.getSentence(el) === this._sentence,
+    );
+
+    if (sentenceWords.length === 0) {
+      return this._sentence;
+    }
+
+    return sentenceWords.map((el) => el.innerHTML).join('');
+  }
+
+  private showAiLoading(message: string): void {
+    const sentenceHtml = this._sentenceHtml;
+    const children: HTMLElement[] = [];
+
+    if (sentenceHtml) {
+      const sentenceEl = createElement('div', {
+        class: 'ai-sentence',
+        attributes: { lang: 'ja' },
+      });
+
+      sentenceEl.innerHTML = sentenceHtml;
+      children.push(sentenceEl);
+    }
+
+    children.push(createElement('div', { class: 'ai-loading', innerText: message }));
+
+    this._details.replaceChildren(createElement('div', { class: 'ai-result', children }));
+  }
+
+  private showAiResult(label: string, html: string, sentence?: string): void {
+    const textEl = createElement('div', { class: 'ai-text' });
+
+    textEl.innerHTML = this.sanitizeHtml(html);
+
+    const children: HTMLElement[] = [];
+
+    if (sentence) {
+      const sentenceEl = createElement('div', {
+        class: 'ai-sentence',
+        attributes: { lang: 'ja' },
+      });
+
+      sentenceEl.innerHTML = this._sentenceHtml ?? '';
+      children.push(sentenceEl);
+    }
+
+    children.push(createElement('div', { class: 'ai-label', innerText: label }), textEl);
+
+    this._details.replaceChildren(createElement('div', { class: 'ai-result', children }));
+  }
+
+  private resetToMeanings(): void {
+    this._activeView = 'dict';
+    this.updateActiveQuickAction();
+
+    if (this._card) {
+      this.adjustDetails(this._card);
+    }
+  }
+
+  private updateActiveQuickAction(): void {
+    const actions = this._popup.querySelectorAll('#quick-actions .quick-action');
+
+    for (const el of Array.from(actions)) {
+      el.classList.toggle('active', el.getAttribute('data-view') === this._activeView);
+    }
+  }
+
+  private explainSentence(): void {
+    this._activeView = 'sentence';
+    this.updateActiveQuickAction();
+
+    if (!this._sentence) {
+      return;
+    }
+
+    const requestId = ++this._aiRequestId;
+    const sentence = this._sentence;
+
+    this.showAiLoading('Breaking down sentence...');
+
+    new ExplainSentenceCommand(sentence)
+      .call()
+      .then((result: string) => {
+        if (this._aiRequestId !== requestId) {
+          return;
+        }
+
+        this.showAiResult('Sentence Breakdown', result, sentence);
+      })
+      .catch(() => {
+        if (this._aiRequestId !== requestId) {
+          return;
+        }
+
+        this._details.replaceChildren(
+          createElement('div', { class: 'ai-loading', innerText: 'Failed to get breakdown.' }),
+        );
+      });
+  }
+
+  private explainWord(): void {
+    this._activeView = 'word';
+    this.updateActiveQuickAction();
+
+    if (!this._card || !this._sentence) {
+      return;
+    }
+
+    const requestId = ++this._aiRequestId;
+    const { spelling } = this._card;
+    const sentence = this._sentence;
+
+    this.showAiLoading('Thinking...');
+
+    new ExplainWordCommand(spelling, sentence)
+      .call()
+      .then((result: string) => {
+        if (this._aiRequestId !== requestId) {
+          return;
+        }
+
+        this.showAiResult('AI Explanation', result, sentence);
+      })
+      .catch(() => {
+        if (this._aiRequestId !== requestId) {
+          return;
+        }
+
+        this._details.replaceChildren(
+          createElement('div', { class: 'ai-loading', innerText: 'Failed to get explanation.' }),
+        );
+      });
+  }
+
   private async handleForgetClick(): Promise<void> {
     if (!this._card || !this._confirmDialog) {
       return;
@@ -615,11 +791,13 @@ export class Popup {
       return;
     }
 
+    this._activeView = 'dict';
     this.adjustMoreMenu(this._card);
     this.adjustRotateButtons(this._card);
     this.hideMoreMenu();
     this.adjustContext(this._card);
     this.adjustDetails(this._card);
+    this.updateActiveQuickAction();
 
     this._popup.setAttribute('class', `popup ${this._card.cardState.join(' ')}`);
   }
@@ -708,10 +886,15 @@ export class Popup {
   }
 
   private getQuickActions(card: JitenCard): HTMLDivElement {
-    const svgIcon = (path: string, title: string, handler?: () => void): HTMLElement => {
+    const svgIcon = (
+      view: string,
+      path: string,
+      title: string,
+      handler?: () => void,
+    ): HTMLElement => {
       const wrapper = createElement('div', {
         class: 'quick-action',
-        attributes: { title },
+        attributes: { title, 'data-view': view },
         handler,
       });
 
@@ -729,20 +912,31 @@ export class Popup {
 
     const children = [
       svgIcon(
-        '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
-        'Explain sentence',
+        'dict',
+        '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>' +
+          '<path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
+        'Dictionary',
+        () => this.resetToMeanings(),
       ),
       svgIcon(
+        'sentence',
+        '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+        'Explain sentence',
+        () => this.explainSentence(),
+      ),
+      svgIcon(
+        'word',
         '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>' +
           '<line x1="12" y1="17" x2="12.01" y2="17"/>',
         'Explain word in context',
+        () => this.explainWord(),
       ),
-      svgIcon('<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>', 'Review history'),
+      svgIcon('history', '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>', 'Review history'),
     ];
 
     if (canAddToDeck) {
       children.push(
-        svgIcon('<path d="M12 5v14M5 12h14"/>', 'Add to deck', () => {
+        svgIcon('add', '<path d="M12 5v14M5 12h14"/>', 'Add to deck', () => {
           if (this._card) {
             this._mining.addOrRemove('add', 'mining', this._card);
           }
