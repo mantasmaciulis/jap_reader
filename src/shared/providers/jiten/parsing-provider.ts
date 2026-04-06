@@ -4,6 +4,8 @@ import { ParsingProvider } from '../types';
 import { getPitchClass } from './pitch-accent-utils';
 
 export class JitenParsingProvider implements ParsingProvider {
+  public readonly batchSize = 80000;
+
   public async parse(paragraphs: string[]): Promise<JitenToken[][]> {
     const { tokens, vocabulary } = await parse(paragraphs);
     const cards = this.vocabToCard(vocabulary);

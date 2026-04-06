@@ -18,6 +18,7 @@ const JPDB_STATE_MAP: Record<JPDBCardState, string> = {
 };
 
 export class JpdbParsingProvider implements ParsingProvider {
+  public readonly batchSize = 16384;
   public async parse(paragraphs: string[]): Promise<JitenToken[][]> {
     const { tokens: rawTokens, vocabulary } = await jpdbParse(paragraphs);
     const cards = this.vocabToCard(vocabulary);

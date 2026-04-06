@@ -3,6 +3,9 @@ import { JitenCardState, JitenRating, JitenToken } from '../jiten/types';
 export type ProviderType = 'jiten' | 'jpdb';
 
 export interface ParsingProvider {
+  /** Maximum batch size in bytes for this provider */
+  readonly batchSize: number;
+
   /**
    * Parse paragraphs into tokens with cards, rubies, and pitch class.
    * Sentence info is added by shared code after this call.

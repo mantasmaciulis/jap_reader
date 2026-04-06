@@ -39,7 +39,7 @@ export class ParseCommandHandler extends BackgroundCommandHandler<ParseCommand> 
     }
 
     await this.injectWordStyles(sender.tab!.id!);
-    this._parseController.parseSequences(sender, data);
+    await this._parseController.parseSequences(sender, data);
   }
 
   public async injectWordStyles(tabId: number): Promise<void> {

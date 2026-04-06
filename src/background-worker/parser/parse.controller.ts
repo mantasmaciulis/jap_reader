@@ -3,13 +3,13 @@ import { JitenToken } from '@shared/jiten/types';
 import { SequenceErrorCommand } from '@shared/messages/foreground/sequence-error.command';
 import { SequenceSuccessCommand } from '@shared/messages/foreground/sequence-success.command';
 import { getParsingProvider } from '@shared/providers/get-providers';
+import { ParsingProvider } from '@shared/providers/types';
 import { Parser } from './parser';
 import { Batch, Handle } from './parser.types';
 import { WorkerQueue } from './worker-queue';
 
 export class ParseController {
-  private BATCH_SIZE = 80000;
-  private JITEN_TIMEOUT = 50;
+  private PARSE_TIMEOUT = 50;
 
   private _pendingParagraphs = new Map<number, Handle>();
   private _workerQueue = new WorkerQueue();
@@ -18,10 +18,15 @@ export class ParseController {
     this._pendingParagraphs.delete(sequence);
   }
 
-  public parseSequences(sender: MessageSender, data: [sequenceId: number, text: string][]): void {
+  public async parseSequences(
+    sender: MessageSender,
+    data: [sequenceId: number, text: string][],
+  ): Promise<void> {
     data.forEach(([sequenceId, text]) => this.queueParagraph(sequenceId, sender, text));
 
-    this.queueBatches(this.getParagraphBatches());
+    const provider = await getParsingProvider();
+
+    this.queueBatches(this.getParagraphBatches(provider.batchSize), provider);
   }
 
   private queueParagraph(sequenceId: number, sender: MessageSender, text: string): void {
@@ -48,7 +53,7 @@ export class ParseController {
     new SequenceErrorCommand(sequenceId, error.message).send(sender.tab!.id!);
   }
 
-  private getParagraphBatches(): Batch[] {
+  private getParagraphBatches(batchSize: number): Batch[] {
     const batches: Batch[] = [];
 
     let currentBatch: Batch = { strings: [], handles: [] };
@@ -57,7 +62,7 @@ export class ParseController {
     for (const [seq, paragraph] of this._pendingParagraphs) {
       length += paragraph.length;
 
-      if (length > this.BATCH_SIZE) {
+      if (length > batchSize) {
         batches.push(currentBatch);
         currentBatch = { strings: [], handles: [] };
         length = paragraph.length;
@@ -76,16 +81,12 @@ export class ParseController {
     return batches;
   }
 
-  private queueBatches(batches: Batch[]): void {
+  private queueBatches(batches: Batch[], provider: ParsingProvider): void {
     for (const batch of batches) {
       this._workerQueue.push(
-        async () => {
-          const provider = await getParsingProvider();
-
-          return new Parser(batch, provider).parse();
-        },
+        () => new Parser(batch, provider).parse(),
         (e) => batch.handles.forEach((handle) => handle.reject(e)),
-        this.JITEN_TIMEOUT,
+        this.PARSE_TIMEOUT,
       );
     }
   }
