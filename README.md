@@ -1,4 +1,4 @@
-# Jap Reader
+# jp-reader
 
 A browser extension for parsing Japanese text on any webpage, with SRS integration and AI-powered explanations.
 
